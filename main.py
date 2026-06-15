@@ -1,3 +1,8 @@
+###############################################
+#   THIS IS NOT WORKING CODE,                 #
+#   PURLY ANNOTATION FOR UNDERSTANDING        #
+#   IN DEPTH LEARNING                         #
+###############################################
 #Import torch------------------------------------------------------------------------------
 import torch, torch.nn as nn
 import snntorch as snn
@@ -227,4 +232,83 @@ class Net(nn.Module):#creates class
     
 #load network onto cuda if avalible 
 net=Net().to(device)
+#----------------------------------------------------------
+#this section creates mathmatical engine that will update network    
+optimizer= torch.optim.Adam(net.parameters(), lr=2e-3, betas=(0.9,0.999))
+    #creates Adam optimizer (popular algrithm) 
+    # used to update networks weights  net.parameters() it needs to tune
+    #sets learning rate (how much it updates) lr=2e-3
+    
+    
+loss_fn= SF.mse_count_loss(correct_rate=0.8,incorrect_rate=0.2)
+    #defines mathrule (loss function) this specific one is 
+    # Mean Square Error Spike Count Loss
+    #this helps the AI determine how its predictions are wrong
+    # and what to do to minimize it
+    # the function uses correct_rate and Incorrect rate ratios to set targets
+    # across T time steps. 
+    # for T_correct = 0.8*T and T_incorrect=0.2*T
+    #sums the actual spikes records binary pike output (0,1) for each nuron at every T and sums them up 
+    # for the penalty score it is..
+    # L= (1/c) sum from c=1 to C of (Target c- Actual c)^2
+
+num_epochs =1 
+    #run for 1 epoch - each data sample is seen only once
+    #looks through entire dataset once and thats it
+num_steps=25 
+    #run 25 steps 
+    #defines each image or sample shown for 25 time steos 
+
+loss_hist=[] 
+    #record loss over iterations 
+
+acc_hist=[]
+    #records accuracy over iterations
+
+#more indepth training loop--------------------------------
+for epoch in range(num_epochs):
+    #loop for current epoch bv outer loop only runs once 
+    
+    for i, (data, targets) in enumerate (iter(train_loader)):
+        #grabs batches of images (data) and correct lables(targets) one by one 
+        #from dataset (train_loader) and i keeps track of which batch number we're on
         
+        data= data.to(device)
+            #sends batch to CPU or GPU depending on what your network is using
+        
+        targets= targets.to(device)
+            #sends correct lables for images to same hardware
+        
+        net.train()
+            # tells Pytorch to put network into training mode needed to learn. 
+        spk_rec, _= net(data) 
+            #forward-pass
+            #passes images through network to get the output and saves output 
+            # spikes and discards second ouput (mem pot) using the _
+        loss_val = loss_fn(spk_rec,targets) 
+            # loss calculation 
+        optimizer.zero_grad() 
+            #null gradients 
+            #clears out memory of old calculations from privous batch so
+            #they don't mess up the new math
+        loss_val.backward()
+            #calculate gradients 
+            # how much each weight in network contributed to error
+        optimizer.step() 
+            #update weights
+            #tweaks all weights slightly to make network more accurate next time
+        loss_hist.append(loss_val.item()) 
+            #store loss 
+        
+        # print every 25 iterations--------
+        if i%25==0:
+            net.eval()
+            print(f"Epoch{epoch},Itterations{i} \n Train Loss: {loss_val.item(): .2f}")
+            
+            #check accuracy on a single branch---------
+            acc= SF.accuracy_rate(spk_rec,targets)
+                #counts spikes and calculates precentage was guessed right
+            acc_hist.append(acc)
+                #saves score
+            print(f"Accuracy: {acc*100: .2F}%\n")
+                #prints score
