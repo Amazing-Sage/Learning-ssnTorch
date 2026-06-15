@@ -141,4 +141,90 @@ for epoch in range(num_epochs):
         acc_hist.append(acc)
         print(f"Accuracy: {acc*100:.2F}%\n")
         
+#More control over your model---------------------------------------------------------------
+import torch.nn.functional as F
+
+# in SNN you have layers to computers thinking process... 
+# - look for basic input data like image pixles 
+# - multiply the data by its weights to look for 
+#   specific patterns
+#- sends the modified version of the data to the next layer
+# a single layer does all of this but these are the steps to make
+# AI do it's decision making, by creating more detailed 
+# steps for it to follow you can have a more smarter AI
+
+
+#define Network 
+
+class Net(nn.Module):#creates class 
+    def __init__(self): #runs automaticaly when create instance of this network
+        super().__init__() #initializes PyTorch class so all mechanics work correctly
+        
+        #network dimentions ---------
+        num_inputs=784 #number of inputs
+        num_hidden= 300 #number of hidden neurons
+        num_outputs= 10 #number of classes (ie, output neurons) for 0-9
+        
+        #decay rates--------
+        # potential decaus over time if neuron doesn't spike. (beta)
+        beta1=0.9 # sets global decay rate for all leaky neurons in layer 1
+        beta2= torch.rand((num_outputs), dtype=torch.float)
+            # independent decay rate for earch leay neuron in layer 2: [0,1)]
+            #meaning a random starting decay betweenb 0 and 1 for each of 10 ouputs neurons
+        
+        #Defining Layers --------
+        #sets up struucture and parameters of network
+        self.fc1=nn.Linear(num_inputs,num_hidden)
+            #creates fully connected (linear)layer connets 784 inputs to 300 hidden neurons
+        self.lif1= snn.Leaky(beta=beta1) # not a learnable decay rate
+            #creates spiking mechanism for hidden layer using beta1 decay
+        self.fc2= nn.Linear(num_hidden,num_outputs)
+            #connects the hidden layer to output layer
+        self.lif2= snn.Leaky(beta=beta2, learn_beta=True)#learnable decay rate
+            #creates spiking mechanism for output layer, dynamically 
+            # adjust and train these decays over time
+        
+    def forward(self,x):# incoming data is x
+        # this section defines how data flows through network over multiple steps
+        mem1= self.lif1.init_leaky() 
+            # reset/init hidden states at t=0
+            #initializees internal voltage of hidden layer neurons to zero
+        mem2= self.lif2.init_leaky() 
+            # reset/init hidden states at t=0
+            # initializes the membrane potential of output layer neurons to zero
+        spk2_rec=[] 
+            #record output spikes 
+            #creates empy list to record output layer over time
+        mem2_rec=[] 
+            #record ouput hidden states
+            #empty list to record how output layers membrade pot. changes over time
+        
+        #loop over time--------
+        for step in range(num_steps): 
+            #loops through data one time-step at a time
+            
+            #Processes 1st layer--------
+            cur1=self.fc1(x.flatten(1))
+                #flattens input data into 1D vector and passes it 
+                # through first linear layer to calculate input 
+                # current (cur1) hittin hidden layer
+            spk1, mem1= self.lif1(cur1,mem1)
+                #updates hidden layer. 
+                #takes current and pervious membrain potential 
+                #to compute new membrane pot.(mem1) to determne if any
+                #nurons crossed pot. to create a spike 
+                
+            #processes 2nd layer--------
+            cur2=self.fc2(spk1)
+            spk2, mem1= self.lif1(cur2,mem2)
+            
+            spk2_rec.append(spk2) #saves output spikes from specifit time step into history list 
+            mem2_rec.append(mem2) #saves output membrane pot from specifit time step into history list
+            
+        return torch.stack(spk2_rec), torch.stack(mem2_rec)
+        #this return staks recorded list into orginized Pytorch (tensor)
+        # and returns full history of output spikes and membrane pot. across all time steps
     
+#load network onto cuda if avalible 
+net=Net().to(device)
+        
