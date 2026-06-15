@@ -298,7 +298,7 @@ for epoch in range(num_epochs):
             #update weights
             #tweaks all weights slightly to make network more accurate next time
         loss_hist.append(loss_val.item()) 
-            #store loss 
+            #score loss 
         
         # print every 25 iterations--------
         if i%25==0:
@@ -312,3 +312,36 @@ for epoch in range(num_epochs):
                 #saves score
             print(f"Accuracy: {acc*100: .2F}%\n")
                 #prints score
+                
+#----------------------------------------------------------
+
+#function to mesure accuracy on full test sset 
+def test_accuracy(data_loader, net, num_steps):
+    #defines function that takes 3 inputs (dataset,modle, time steps)
+        with torch.no_grad():
+            #tells pytorch to run effecently and not waste computer memory 
+            # on gradients or traking math for weight updates
+            
+            #initializes counter 
+            total=0
+            acc=0
+            net.eval()# network in evaluation mode
+            
+            data_loader= iter(data_loader)
+            #converts data loader into a iterable stream to pull batches out of it
+            for data, targets in data_loader:
+                 
+                data= data.to(device)
+                    #sends next batch of testing to GPU or CPU depending on network
+                targets = targets.to(device)
+                    #sends actual lables for test images to hardware
+                spk_rec, _= net(data)
+                    #runs test images through neural network to get recorded output spikes
+                
+                acc += SF.accuracy_rate(spk_rec,targets)* spk_rec.size(1)
+                    #calculates precentage accurate
+                total += spk_rec.size(1)
+                    #adds results together
+        return acc/total 
+print (f"Test set accuracy: {test_accuracy(test_loader,net,num_steps)*100:.3f}%")
+                
