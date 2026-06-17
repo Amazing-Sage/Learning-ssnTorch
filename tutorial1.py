@@ -18,5 +18,5 @@ num_classes=10 #MNIST has 10 output classes
 
 #torch Variables 
 dtype = torch.float
-
+ 
 
