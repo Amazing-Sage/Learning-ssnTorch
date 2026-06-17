@@ -11,7 +11,7 @@
 #------------------------------------------------------------------------
 
 import snntorch as snn 
-import snntorch import spikeplot as splt
+from snntorch import spikeplot as splt
 from snntorch import spikegen
 
 import torch 
@@ -21,5 +21,10 @@ import numpy as np
 
 import matplotlib.pyplot as plt
 
+import sys 
+import os
+
 # plot settings (copied& from another folder)
+
 from config import plot_settings as ps
+
