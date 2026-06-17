@@ -6,6 +6,7 @@
 #Import torch------------------------------------------------------------------------------
 import torch, torch.nn as nn
 import snntorch as snn
+from snntorch import functional as SF
 
 #Define variables for data loading---------------------------------------------------------
 batch_size=128
@@ -50,10 +51,10 @@ from torchvision import datasets, transforms
 #define a transform------------------------------------------------------------------------
     #this creates a list of modifications to every image for the AI to read
 transform = transforms.Compose([
-        transform.Resize((28,28)). #28 x 28 pixles
-        transform.Greyscale(), #makes only black and white image
-        transform.ToTensor(), #converts image to math
-        transforms.Normalize((0,),(1,)) #squishes pixle values between math rage to help learn faster
+    transforms.Resize((28, 28)), #28 x 28 pixles
+    transforms.Grayscale(), #makes only black and white image
+    transforms.ToTensor(), #converts image to math
+    transforms.Normalize((0,), (1,)) #squishes pixle values between math rage to help learn faster
     ])
         
 
@@ -120,11 +121,14 @@ acc_hist=[] #record accuracy over iterations
 
 #training loop 
 for epoch in range(num_epochs):
-    for i, (data,targes) in enumerate(iter(train_loader)): #hands AI batch of images
+    for i, (data, targets) in enumerate(iter(train_loader)): #hands AI batch of images
         data = data.to(device)
         targets =targets.to(device) 
         
         net.train()
+        # Note: forward_pass needs to be defined or replaced by the net call
+        def forward_pass(net, data, steps):
+            return net(data)[0]
         spk_rec = forward_pass(net,data,num_steps) 
             # forward-pass (learning mode) and feeds image to AI to then 
             # flash images over multiple time steps and records how many times 
@@ -137,12 +141,12 @@ for epoch in range(num_epochs):
         loss_hist.append(loss_val.item()) #store loss (saves score into history list)
         
     #print every 25 iterations 
-    if i% 25==0:
+    if i % 25 == 0:
         print(f"Epoch {epoch}, Iteration{i} \n Trainloss:{loss_val.item():.2f}")
             #prints progress report every 25 batches
         
         #check accuracy on a single branch 
-        acc = SF.accracy_rate(spk_rec,targets)
+        acc = SF.accuracy_rate(spk_rec,targets)
         acc_hist.append(acc)
         print(f"Accuracy: {acc*100:.2F}%\n")
         
@@ -344,4 +348,3 @@ def test_accuracy(data_loader, net, num_steps):
                     #adds results together
         return acc/total 
 print (f"Test set accuracy: {test_accuracy(test_loader,net,num_steps)*100:.3f}%")
-                
