@@ -156,6 +156,6 @@ plt.imshow(spike_data_sample2.mean(axis=0).reshape((28,-1)).cpu(),cmap='binary')
 plt.axis('off')
 plt.title('Gain =0.25')
 
-#plt.savefig("mnist_spikes.png")
+plt.savefig("mnist_spikes.png")
 plt.show()  
 
