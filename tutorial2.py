@@ -120,4 +120,9 @@ print(f"The calculated value of input pulse [A] x resistance [Ω] is: {cur_in[11
 print(f"The simulated value of steady-state membrane potential is: {mem_rec[100][0]} V")
 
 
+#========================================================================
+#Pulse Input
+#========================================================================
+print("Lapcques: Pulse input\n")
+
 
