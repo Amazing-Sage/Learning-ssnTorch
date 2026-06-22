@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+from snntorch import spikeplot as splt
 
 #@title Plotting Settings
 def plot_mem(mem, title=False):
