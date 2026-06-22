@@ -4,12 +4,12 @@ import matplotlib.pyplot as plt
 def plot_mem(mem, title=False):
   if title:
     plt.title(title)
-  plt.plot(mem)
-  plt.xlabel("Time step")
-  plt.ylabel("Membrane Potential")
-  plt.xlim([0, 50])
-  plt.ylim([0, 1])
-  plt.show()
+    plt.plot(mem)
+    plt.xlabel("Time step")
+    plt.ylabel("Membrane Potential")
+    plt.xlim([0, 50])
+    plt.ylim([0, 1])
+    plt.show()
 
 def plot_step_current_response(cur_in, mem_rec, vline1):
   fig, ax = plt.subplots(2, figsize=(8,6),sharex=True)
