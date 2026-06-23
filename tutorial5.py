@@ -115,3 +115,98 @@ mnist_test = datasets.MNIST(data_path, train=False, download=True, transform=tra
 # Create DataLoaders
 train_loader = DataLoader(mnist_train, batch_size=batch_size, shuffle=True, drop_last=True)
 test_loader = DataLoader(mnist_test, batch_size=batch_size, shuffle=True, drop_last=True)
+
+
+#========================================================================
+#Defining Network
+#========================================================================
+print("\nDefining Network")
+print("-------------------\n")
+
+# Network Architecture
+num_inputs = 28*28 # number of input neurons
+num_hidden = 1000 # middle layer of 1k neurons to find patterns in images
+num_outputs = 10 #output layer neurons
+
+# Temporal Dynamics
+num_steps = 25 #number of steps to un
+beta = 0.95 #leak 5% with 95%retained of E charge from one time step 
+
+# Define Network
+class Net(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+        # Initialize layers
+        self.fc1 = nn.Linear(num_inputs, num_hidden)
+        self.lif1 = snn.Leaky(beta=beta)
+        self.fc2 = nn.Linear(num_hidden, num_outputs)
+        self.lif2 = snn.Leaky(beta=beta)
+
+    def forward(self, x):
+
+        # Initialize hidden states at t=0
+        #resets mem pot of all neurons to 0 to make sure old data doesn't effect new data
+        mem1 = self.lif1.init_leaky() 
+        mem2 = self.lif2.init_leaky()
+
+        # Record the final layer
+        spk2_rec = []
+        mem2_rec = []
+
+        #time loop loops it 25 times to process data
+        #at very end of each step spikes and mem pot of lif2 are appended to recording list
+        #using torch.stack we append all of those together
+        #cur is the input current 
+        for step in range(num_steps):
+            cur1 = self.fc1(x) 
+                #fc1 applies linear transform to all input pixles from MNIST
+            spk1, mem1 = self.lif1(cur1, mem1)
+                #lif1 integrates weighted input over time emitting spike if condition met
+                #if current strong enough over time mem1 will spike
+            cur2 = self.fc2(spk1)
+                #fc2 applies linear transformation to output spikes of lif1
+                 
+            spk2, mem2 = self.lif2(cur2, mem2)
+                #lif2 is another spiking neuron layer integrating weited spikes over time 
+                
+            #these functions append spks and mempot in the end for final layer 
+            # which is compiled in the return statement to be used later.
+            spk2_rec.append(spk2)
+            mem2_rec.append(mem2)
+
+        return torch.stack(spk2_rec, dim=0), torch.stack(mem2_rec, dim=0)
+
+# Load the network onto CUDA if available
+net = Net().to(device)
+
+#========================================================================
+#Training SNN
+#========================================================================
+print("\nTraining SNN")
+print("-------------------\n")
+
+#7.1 Accuracy metric ----------------------------------------------------
+#------------------------------------------------------------------------
+
+# pass data into the network, sum the spikes over time
+# and compare the neuron with the highest number of spikes
+# with the target
+
+def print_batch_accuracy(data, targets, train=False):
+    output, _ = net(data.view(batch_size, -1))
+    _, idx = output.sum(dim=0).max(1)
+    acc = np.mean((targets == idx).detach().cpu().numpy())
+
+    if train:
+        print(f"Train set accuracy for a single minibatch: {acc*100:.2f}%")
+    else:
+        print(f"Test set accuracy for a single minibatch: {acc*100:.2f}%")
+
+def train_printer():
+    print(f"Epoch {epoch}, Iteration {iter_counter}")
+    print(f"Train Set Loss: {loss_hist[counter]:.2f}")
+    print(f"Test Set Loss: {test_loss_hist[counter]:.2f}")
+    print_batch_accuracy(data, targets, train=True)
+    print_batch_accuracy(test_data, test_targets, train=False)
+    print("\n")
