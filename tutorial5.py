@@ -97,10 +97,13 @@ data_path='/tmp/data/mnist'
 
 dtype = torch.float
 
- if torch.cuda.is_available(): 
-    device= torch.device("cuda")
-else:
-    device=torch.device("cpu") # write cpu bc it's on windows not mac
+# Force the network to use the CPU due to hardware mismatch
+device = torch.device("cpu")
+
+#if torch.cuda.is_available(): 
+    #device= torch.device("cuthda")
+#else:
+    #device=torch.device("cpu") # write cpu bc it's on windows not mac
     
 # Define a transform
 transform = transforms.Compose([
@@ -287,10 +290,10 @@ optimizer.step()
 
 #rerun loss calculation and accuracy after a single interatin
 # calculate new network outputs using the same data
-spk_rec,mem_rec=net(data_view(batch_size, -1))
+spk_rec,mem_rec=net(data.view(batch_size, -1))
 
 #initialize total loss value 
-loss_val=torch.zero((1),dtype=dtype, device=device)
+loss_val = torch.zeros((1), dtype=dtype, device=device)
 #initialize loss value to store 1 number
 # datatype determines whole or decimal 
 # device tells it where to store it (CPU or GPU demending on what what set in the beginning)
@@ -312,3 +315,120 @@ print_batch_accuracy(data, targets, train=True)
 #mem pot is used to calculate cross entropy loss
 #spike count is used for mesure of accuracy 
 
+#7.5 One Iteration Of Training ------------------------------------------
+#------------------------------------------------------------------------
+
+num_epochs = 1 # one whole pass through entire training dataset
+loss_hist = [] # record lost spikes 
+test_loss_hist = []#record loss test spikes
+counter = 0
+
+# Outer training loop
+for epoch in range(num_epochs):#during training dataset for one pass through
+    iter_counter = 0 #set counter step to zero 
+    train_batch = iter(train_loader) #converts data loader into iterator 
+
+    # Minibatch training loop
+    for data, targets in train_batch: 
+        #moves images to CPU or GPU whatever was set earlier
+        data = data.to(device) #takes batch of raw digit images and overwrites old atempts 
+        targets = targets.to(device) #takes batch of data images but has the correct number
+
+        # forward pass
+        net.train()#gets neuralnetworks into training mode 
+        spk_rec, mem_rec = net(data.view(batch_size, -1)) 
+        #set spike recording and mem recording lisdt to...
+        #data.view(batch_size,-1) flattens 28*28 images into a 748 vector
+        #net() returns recorded spikes and membrain potential 
+
+        # initialize the loss & sum over time
+        loss_val = torch.zeros((1), dtype=dtype, device=device)
+        for step in range(num_steps):
+            loss_val += loss(mem_rec[step], targets)
+
+        # Gradient calculation + weight update
+        optimizer.zero_grad() # resets all stored error directions to zero 
+        loss_val.backward()#calculates mathmatical gradients for every single weight in network
+        optimizer.step() #movement in weights fc1 & fc2  and change number val
+
+        # Store loss history for future plotting
+        loss_hist.append(loss_val.item())
+
+        # Test set
+        #with statement turns off gradient tracking and run all indented 
+        # code indented within this statement and turn tracking back on afterwards
+        
+        with torch.no_grad():
+            
+            #grabs fresh batch of images and answers from test set and sends them to device
+            net.eval()
+            test_data, test_targets = next(iter(test_loader)) # grabing test data and targets 
+            test_data = test_data.to(device) #send test data to device
+            test_targets = test_targets.to(device) #send test targets to device
+
+            # Test set forward pass
+            test_spk, test_mem = net(test_data.view(batch_size, -1))
+
+            # Test set loss
+            test_loss = torch.zeros((1), dtype=dtype, device=device)
+            for step in range(num_steps):
+                test_loss += loss(test_mem[step], test_targets)
+                #at every time step we look at 
+                #test_mem[step] which the internal V 
+                #test_targets which is how close it is to the actual target ans
+                #add this into our test_loss container
+            test_loss_hist.append(test_loss.item()) 
+            #add total final error as regular number and save it in loss hist
+
+            # Print train/test loss/accuracy
+            if counter % 50 == 0:
+                train_printer()
+            counter += 1
+            iter_counter +=1
+
+#========================================================================
+#Plotting Results 
+#========================================================================
+print("\nPlotting Results ")
+print("-------------------------------------\n")
+
+# Plot Loss
+fig = plt.figure(facecolor="w", figsize=(10, 5))
+plt.plot(loss_hist)
+plt.plot(test_loss_hist)
+plt.title("Loss Curves")
+plt.legend(["Train Loss", "Test Loss"])
+plt.xlabel("Iteration")
+plt.ylabel("Loss")
+plt.show()
+
+
+#78.2 Test Set Accuracy -------------------------------------------------
+#------------------------------------------------------------------------
+
+total = 0
+correct = 0
+
+# drop_last switched to False to keep all samples
+test_loader = DataLoader(mnist_test, batch_size=batch_size, shuffle=True, drop_last=False)
+
+with torch.no_grad(): #turn off gradient tracking 
+  net.eval() # go into training mode 
+  for data, targets in test_loader: #for the test and target values in test_loader
+    
+    #send data to CPU or GPU
+    data = data.to(device)
+    
+    #send target vals to CPU or GPU
+    targets = targets.to(device)
+
+    # forward pass
+    test_spk, _ = net(data.view(data.size(0), -1))
+
+    # calculate total accuracy
+    _, predicted = test_spk.sum(dim=0).max(1)
+    total += targets.size(0)
+    correct += (predicted == targets).sum().item()
+    
+print(f"Total correctly classified test set images: {correct}/{total}")
+print(f"Test Set Accuracy: {100 * correct / total:.2f}%")
