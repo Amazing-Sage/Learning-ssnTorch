@@ -193,11 +193,24 @@ print("-------------------\n")
 # and compare the neuron with the highest number of spikes
 # with the target
 
-def print_batch_accuracy(data, targets, train=False):
-    output, _ = net(data.view(batch_size, -1))
-    _, idx = output.sum(dim=0).max(1)
-    acc = np.mean((targets == idx).detach().cpu().numpy())
 
+def print_batch_accuracy(data, targets, train=False):
+    output, _ = net(data.view(batch_size, -1))  
+        #feeds data to output
+        #data.view(batch_size,1) flattens input images into sibgle vector per images
+        #net() returns recorded spikes and membrain potential 
+    
+    _, idx = output.sum(dim=0).max(1)
+        #finding Preditctions 
+        #output.sum(dim=0) bc output contains spikes recorded every timestep summing along dim=0 counts 
+        #total spikes each output neuron over num_steps
+        
+    acc = np.mean((targets == idx).detach().cpu().numpy())
+        #calculates accuracy 
+        #idx is network guesses which is compared to actual ans targets 
+        #calculates avg numbers and dent to cpu 
+
+    #calls accuracy for both training and testing 
     if train:
         print(f"Train set accuracy for a single minibatch: {acc*100:.2f}%")
     else:
@@ -210,3 +223,92 @@ def train_printer():
     print_batch_accuracy(data, targets, train=True)
     print_batch_accuracy(test_data, test_targets, train=False)
     print("\n")
+    
+#7.2 Loss Definition ----------------------------------------------------
+#------------------------------------------------------------------------
+
+#nn.CrossEntropyLoss fucntion in PyTorch automatically handles taking 
+#softmax of output layer as well as generating loss of output
+
+loss=nn.CrossEntropyLoss() 
+
+#7.3 Optimizer ----------------------------------------------------------
+#------------------------------------------------------------------------
+
+#learning rate is 5e-4
+#Adam is a optimizer the preforms well on recurrent netowrks 
+
+optimizer = torch.optim.Adam(net.parameters(), lr=5e-4, betas=(0.9,0.999))
+
+#7.4 One Iteration Of Training ------------------------------------------
+#------------------------------------------------------------------------
+
+#take first batch of data and load it onto CUDA if avalible 
+data, targets = next(iter(train_loader))
+data = data.to(device)
+targets = targets.to(device)
+
+#flatten input data to vector of size 784 and pass it through network 
+spk_rec, mem_rec = net(data.view(batch_size, -1))
+    #spk_rec records spks and records of mem into a vector
+    
+print(mem_rec.size()) #print recorded mem size
+
+##torch.Size([25, 128, 10])
+#recordings of membrane pot is taken across 25 time steps, 
+#over 128 samples of data , 10 output neurons
+
+#calculate loss at every time step and sum together 
+# initialize the total loss value
+loss_val = torch.zeros((1), dtype=dtype, device=device)
+
+# sum loss at every step
+for step in range(num_steps):
+  loss_val += loss(mem_rec[step], targets)
+  # for every step take the total loss val and 
+  # add it to the loss of mem rec and targets 
+
+print(f"Training loss: {loss_val.item():.3f}")
+#Training loss: 60.488 # this is pretty bad bc it should be around 10%
+#the reason for this is because currently the network is untrained. 
+
+print_batch_accuracy(data, targets, train=True)
+#Train set accuracy for a single minibatch: 10.16%
+
+#single weight update is applied to the network 
+# clear previously stored gradients
+optimizer.zero_grad()
+
+# calculate the gradients
+loss_val.backward()
+
+# weight update
+optimizer.step()
+
+#rerun loss calculation and accuracy after a single interatin
+# calculate new network outputs using the same data
+spk_rec,mem_rec=net(data_view(batch_size, -1))
+
+#initialize total loss value 
+loss_val=torch.zero((1),dtype=dtype, device=device)
+#initialize loss value to store 1 number
+# datatype determines whole or decimal 
+# device tells it where to store it (CPU or GPU demending on what what set in the beginning)
+#dtype is data type 
+
+# sum loss at every step
+for step in range(num_steps):
+  loss_val += loss(mem_rec[step], targets)
+  # for every step take the total loss val and 
+  # add it to the loss of mem rec and targets 
+  
+print(f"Training loss: {loss_val.item():.3f}")
+print_batch_accuracy(data, targets, train=True)
+
+#Training loss: 47.384
+#Train set accuracy for a single minibatch: 33.59%
+
+#loss should decreace as accuracy increases 
+#mem pot is used to calculate cross entropy loss
+#spike count is used for mesure of accuracy 
+
