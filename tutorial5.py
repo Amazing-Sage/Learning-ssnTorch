@@ -1,6 +1,6 @@
 #########################################################################
-# THIS IS TUTORIAL 4 FROM:                                              #
-# https://snntorch.readthedocs.io/en/latest/tutorials/tutorial_4.html   #
+# THIS IS TUTORIAL 5 FROM:                                              #
+# https://snntorch.readthedocs.io/en/latest/tutorials/tutorial_5.html   #
 # Focuses on Feedforward Spiking Neural Network                         #       
 #########################################################################
 
